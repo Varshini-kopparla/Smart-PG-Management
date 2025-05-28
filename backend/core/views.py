@@ -11,6 +11,11 @@ import pytesseract
 from PIL import Image
 import io
 import re
+from rest_framework.permissions import IsAuthenticated
+from .models import Tenant, Room, Complaint, Payment
+from django.db import models
+from .models import Tenant, Complaint, Payment
+
 
 
 # Room APIs
@@ -53,8 +58,13 @@ class PaymentDetailView(generics.RetrieveAPIView):
 class ComplaintListCreateView(generics.ListCreateAPIView):
     queryset = Complaint.objects.all()
     serializer_class = ComplaintSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
+    def perform_create(self, serializer):
+        tenant = Tenant.objects.get(user=self.request.user)
+        serializer.save(tenant=tenant)
+
+        
 class ComplaintDetailView(generics.RetrieveUpdateAPIView):
     queryset = Complaint.objects.all()
     serializer_class = ComplaintSerializer
@@ -97,3 +107,58 @@ class OCRParseIDView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DashboardSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        total_tenants = Tenant.objects.count()
+        total_rooms = Room.objects.count()
+        occupied_rooms = Room.objects.filter(status='occupied').count()
+        total_income = Payment.objects.filter(status='paid').aggregate(total=models.Sum('amount'))['total'] or 0
+        pending_complaints = Complaint.objects.filter(status__iexact='open').count()
+
+        occupancy_rate = round((occupied_rooms / total_rooms) * 100, 2) if total_rooms else 0
+
+        return Response({
+            "total_income": total_income,
+            "occupancy_rate": occupancy_rate,
+            "total_tenants": total_tenants,
+            "pending_complaints": pending_complaints,
+        })
+    
+class TenantDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        try:
+            tenant = Tenant.objects.select_related('room').get(user=user)
+
+            payments = Payment.objects.filter(tenant=tenant).order_by('-year', '-month')
+            complaints = Complaint.objects.filter(tenant=tenant).order_by('-created_at')
+
+            return Response({
+                "room_number": tenant.room.number,
+                "room_type": tenant.room.room_type,
+                "rent": tenant.room.rent,
+                "payments": [
+                    {
+                        "month": p.month,
+                        "year": p.year,
+                        "amount": p.amount,
+                        "status": p.status
+                    } for p in payments
+                ],
+                "complaints": [
+                    {
+                        "title": c.title,
+                        "status": c.status,
+                        "response": c.response
+                    } for c in complaints
+                ]
+            })
+
+        except Tenant.DoesNotExist:
+            return Response({"error": "Tenant record not found."}, status=404)

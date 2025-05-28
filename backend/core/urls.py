@@ -9,6 +9,8 @@ from .views import (
 )
 from .views import OCRParseIDView
 from .auth_views import CustomLoginView
+from .views import DashboardSummaryView
+from .views import TenantDashboardView
 
 urlpatterns = [
     # Auth
@@ -34,4 +36,6 @@ urlpatterns = [
     path('complaints/<int:pk>/', ComplaintDetailView.as_view(), name='complaint-detail'),
 
     path('ocr/parse-id/', OCRParseIDView.as_view(), name='ocr-parse-id'),
+    path('dashboard/summary/', DashboardSummaryView.as_view(), name='dashboard-summary'),
+    path('tenant/dashboard/', TenantDashboardView.as_view(), name='tenant-dashboard'),
 ]
