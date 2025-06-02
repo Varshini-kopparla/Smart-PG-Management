@@ -27,7 +27,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'role', 'phone')
+        fields = ['username', 'email', 'role', 'phone']
+
 
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -35,14 +36,18 @@ class RoomSerializer(serializers.ModelSerializer):
         model = Room
         fields = '__all__'
 
+class RoomSerializerNested(serializers.ModelSerializer):
+    class Meta:
+        model = Room
+        fields = ['number', 'room_type', 'rent']
 
 class TenantSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    room = RoomSerializerNested(read_only=True)
 
     class Meta:
         model = Tenant
-        fields = '__all__'
-
+        fields = ['id', 'user', 'room']
 
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:

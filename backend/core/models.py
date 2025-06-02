@@ -30,13 +30,19 @@ class Room(models.Model):
 
 class Tenant(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    room = models.ForeignKey(Room, on_delete=models.SET_NULL, null=True)
+    room = models.ForeignKey(Room, on_delete=models.SET_NULL, null=True, blank=True)
     rent_amount = models.DecimalField(max_digits=8, decimal_places=2)
     join_date = models.DateField()
     id_proof = models.FileField(upload_to='id_proofs/')
 
     def __str__(self):
         return self.user.username
+
+    def save(self, *args, **kwargs):
+        if self.room:
+            self.room.status = 'occupied'
+            self.room.save()
+        super().save(*args, **kwargs)
     
 class Payment(models.Model):
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
