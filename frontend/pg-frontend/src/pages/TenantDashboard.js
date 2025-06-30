@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import axios from 'axios';
-
 
 function TenantDashboard() {
   const [data, setData] = useState(null);
@@ -10,130 +8,137 @@ function TenantDashboard() {
     const token = localStorage.getItem('accessToken');
     if (!token) return;
 
-    axios.get('http://127.0.0.1:8000/api/tenant/dashboard/', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    .then((res) => setData(res.data))
-    .catch((err) => console.error("Failed to fetch tenant dashboard:", err));
+    axios
+      .get('http://127.0.0.1:8000/api/tenant/dashboard/', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => setData(res.data))
+      .catch((err) => console.error("Failed to fetch tenant dashboard:", err));
   }, []);
 
-  if (!data) return <div className="p-10">Loading your dashboard...</div>;
+  if (!data) return <div className="p-5 text-center">Loading your dashboard...</div>;
 
   return (
-    <div className="min-h-screen p-10">
+    <div className="container my-5">
       <TenantNavbar />
 
-      <h1 className="text-3xl font-bold text-green-600 mb-6 mt-6">Tenant Dashboard</h1>
+      <h2 className="text-center my-4">Tenant Dashboard</h2>
 
       {/* Room Details */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Room Details</h2>
-        <p>Room Number: <strong>{data.room_number}</strong></p>
-        <p>Room Type: <strong>{data.room_type}</strong></p>
-        <p>Monthly Rent: ₹<strong>{data.rent}</strong></p>
+      <div className="card mb-4">
+        <div className="card-body">
+          <h5 className="card-title">Room Details</h5>
+          <p>Room Number: <strong>{data.room_number}</strong></p>
+          <p>Room Type: <strong>{data.room_type}</strong></p>
+          <p>Monthly Rent: ₹<strong>{data.rent}</strong></p>
+        </div>
       </div>
 
-      {/* Payments */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Payment History</h2>
-        <ul className="list-disc pl-5">
-          {data.payments.map((p, idx) => (
-            <li key={idx}>
-              {p.month} {p.year} – ₹{p.amount} [{p.status}]
-            </li>
-          ))}
-        </ul>
+      {/* Payment History */}
+      <div className="card mb-4">
+        <div className="card-body">
+          <h5 className="card-title">Payment History</h5>
+          {data.payments.length === 0 ? (
+            <p className="text-muted">No payments recorded.</p>
+          ) : (
+            <ul className="list-group">
+              {data.payments.map((p, idx) => (
+                <li key={idx} className="list-group-item">
+                  {p.month} {p.year} – ₹{p.amount} [{p.status}]
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       {/* Complaints */}
-      <div>
-        <h2 className="text-xl font-semibold mb-2">Complaints</h2>
-        {data.complaints.length === 0 ? (
-          <p>No complaints filed.</p>
-        ) : (
-          <ul className="list-disc pl-5">
-            {data.complaints.map((c, idx) => (
-              <li key={idx}>
-                <strong>{c.title}</strong> — {c.status}
-                {c.response && (
-                  <div className="ml-4 text-sm text-gray-600">
-                    Response: {c.response}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className="card mb-4">
+        <div className="card-body">
+          <h5 className="card-title">Complaints</h5>
+          {data.complaints.length === 0 ? (
+            <p className="text-muted">No complaints filed.</p>
+          ) : (
+            <ul className="list-group">
+              {data.complaints.map((c, idx) => (
+                <li key={idx} className="list-group-item">
+                  <strong>{c.title}</strong> — {c.status}
+                  {c.response && (
+                    <div className="text-muted small">Response: {c.response}</div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
+
       {/* Submit Complaint */}
-<div className="mt-10">
-  <h2 className="text-xl font-semibold mb-2">Submit New Complaint</h2>
-  <form
-    onSubmit={(e) => {
-      e.preventDefault();
-      const title = e.target.title.value;
-      const description = e.target.description.value;
+      <div className="card">
+        <div className="card-body">
+          <h5 className="card-title">Submit New Complaint</h5>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const title = e.target.title.value;
+              const description = e.target.description.value;
+              const token = localStorage.getItem('accessToken');
+              if (!token) return;
 
-      const token = localStorage.getItem('accessToken');
-      if (!token) return;
-
-      axios
-        .post(
-          'http://127.0.0.1:8000/api/complaints/',
-          { title, description },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        )
-        .then((res) => {
-          alert('Complaint submitted ✅');
-          e.target.reset();
-          // Refresh complaint list
-          setData((prev) => ({
-            ...prev,
-            complaints: [res.data, ...prev.complaints],
-          }));
-        })
-        .catch((err) => {
-          console.error('Error submitting complaint:', err);
-          alert('Something went wrong ❌');
-        });
-    }}
-    className="space-y-4"
-  >
-    <input
-      type="text"
-      name="title"
-      required
-      placeholder="Title"
-      className="w-full border px-4 py-2 rounded"
-    />
-    <textarea
-      name="description"
-      required
-      placeholder="Describe your issue"
-      className="w-full border px-4 py-2 rounded"
-      rows={4}
-    ></textarea>
-    <button
-      type="submit"
-      className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-    >
-      Submit Complaint
-    </button>
-  </form>
-</div>
-
+              axios
+                .post(
+                  'http://127.0.0.1:8000/api/complaints/',
+                  { title, description },
+                  {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      'Content-Type': 'application/json',
+                    },
+                  }
+                )
+                .then((res) => {
+                  alert('Complaint submitted ✅');
+                  e.target.reset();
+                  setData((prev) => ({
+                    ...prev,
+                    complaints: [res.data, ...prev.complaints],
+                  }));
+                })
+                .catch((err) => {
+                  console.error('Error submitting complaint:', err);
+                  alert('Something went wrong ❌');
+                });
+            }}
+          >
+            <div className="mb-3">
+              <input
+                type="text"
+                name="title"
+                required
+                placeholder="Title"
+                className="form-control"
+              />
+            </div>
+            <div className="mb-3">
+              <textarea
+                name="description"
+                required
+                placeholder="Describe your issue"
+                rows="4"
+                className="form-control"
+              ></textarea>
+            </div>
+            <button type="submit" className="btn btn-success">
+              Submit Complaint
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
 
-
+// Navbar
 function TenantNavbar() {
   const [user, setUser] = useState(null);
 
@@ -147,24 +152,20 @@ function TenantNavbar() {
     const token = localStorage.getItem('accessToken');
     if (!token) return;
 
-    axios.get('http://127.0.0.1:8000/api/auth/user/', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    .then((res) => setUser(res.data))
-    .catch((err) => console.error("Couldn't fetch user:", err));
+    axios
+      .get('http://127.0.0.1:8000/api/auth/user/', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => setUser(res.data))
+      .catch((err) => console.error("Couldn't fetch user:", err));
   }, []);
 
   return (
-    <nav className="bg-green-600 text-white px-6 py-4 flex justify-between items-center shadow-md rounded">
-      <h1 className="text-xl font-semibold">Smart PG Tenant</h1>
-      <div className="flex items-center gap-4">
-        {user && <span className="text-sm">Welcome, {user.username}</span>}
-        <button
-          onClick={handleLogout}
-          className="bg-white text-green-600 font-semibold px-4 py-1 rounded hover:bg-gray-100"
-        >
+    <nav className="navbar navbar-expand-lg navbar-dark bg-success px-4 mb-4">
+      <span className="navbar-brand">Smart PG Tenant</span>
+      <div className="ms-auto d-flex align-items-center gap-2">
+        {user && <span className="text-white me-3">Welcome, {user.username}</span>}
+        <button onClick={handleLogout} className="btn btn-light btn-sm">
           Logout
         </button>
       </div>
